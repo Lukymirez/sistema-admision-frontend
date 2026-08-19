@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut, Plus, CheckCircle2, Clock, XCircle, ImagePlus, X } from 'lucide-react';
+import { GraduationCap, LogOut, Plus, CheckCircle2, Clock, XCircle, ImagePlus, X, Pencil, Trash2, Lock } from 'lucide-react';
 
 import api from '../../services/api';
 import { getUsuario, cerrarSesion } from '../../utils/auth';
@@ -19,7 +19,7 @@ const MATERIAS = [
 // finalmente acuerde el Comité (ej. 20 preguntas por materia por docente).
 const META_POR_MATERIA = 20;
 
-const PREGUNTA_VACIA = { materia: 'matematica', enunciado: '', alternativas: ['', '', '', ''], respuestaCorrecta: 0, imagenUrl: '' };
+const PREGUNTA_VACIA = { materia: 'matematica', enunciado: '', alternativas: ['', '', '', '', ''], respuestaCorrecta: 0, imagenUrl: '' };
 
 const ESTADO_BADGE = {
   borrador: { icono: Clock, texto: 'En revisión', clase: 'bg-amber-500/15 text-amber-300' },
@@ -32,6 +32,7 @@ export default function BancoPreguntas() {
   const usuario = getUsuario();
 
   const [form, setForm] = useState(PREGUNTA_VACIA);
+  const [editandoId, setEditandoId] = useState(null);
   const [preguntas, setPreguntas] = useState([]);
   const [progreso, setProgreso] = useState({});
   const [error, setError] = useState('');
@@ -106,15 +107,52 @@ export default function BancoPreguntas() {
 
     setLoading(true);
     try {
-      await api.post('/preguntas', form);
-      setExito('Pregunta registrada como borrador — quedará pendiente de validación del Comité.');
+      if (editandoId) {
+        await api.put(`/preguntas/${editandoId}`, form);
+        setExito('Pregunta actualizada — vuelve a quedar pendiente de revisión del Comité.');
+      } else {
+        await api.post('/preguntas', form);
+        setExito('Pregunta registrada como borrador — quedará pendiente de validación del Comité.');
+      }
       setForm({ ...PREGUNTA_VACIA, materia: form.materia }); // conserva la materia seleccionada para agilizar la carga
+      setEditandoId(null);
       cargarMisPreguntas();
     } catch (err) {
       const mensajeApi = err.response?.data?.mensaje || err.response?.data?.errores?.[0]?.msg;
-      setError(mensajeApi || 'Ocurrió un error al registrar la pregunta.');
+      setError(mensajeApi || 'Ocurrió un error al guardar la pregunta.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const iniciarEdicion = (pregunta) => {
+    setEditandoId(pregunta._id);
+    setForm({
+      materia: pregunta.materia,
+      enunciado: pregunta.enunciado,
+      alternativas: [...pregunta.alternativas],
+      respuestaCorrecta: pregunta.respuestaCorrecta,
+      imagenUrl: pregunta.imagenUrl || '',
+    });
+    setError('');
+    setExito('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setForm(PREGUNTA_VACIA);
+    setError('');
+  };
+
+  const eliminarPregunta = async (id) => {
+    if (!window.confirm('¿Seguro que quieres eliminar esta pregunta? Esta acción no se puede deshacer.')) return;
+    try {
+      await api.delete(`/preguntas/${id}`);
+      cargarMisPreguntas();
+      if (editandoId === id) cancelarEdicion();
+    } catch (err) {
+      setError(err.response?.data?.mensaje || 'No se pudo eliminar la pregunta.');
     }
   };
 
@@ -172,7 +210,16 @@ export default function BancoPreguntas() {
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Formulario para subir una pregunta */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h2 className="font-display text-lg font-semibold text-white">Agregar pregunta</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-white">
+                {editandoId ? 'Editar pregunta' : 'Agregar pregunta'}
+              </h2>
+              {editandoId && (
+                <button onClick={cancelarEdicion} className="text-xs text-gray-400 underline hover:text-gray-200">
+                  Cancelar edición
+                </button>
+              )}
+            </div>
 
             {error && (
               <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">{error}</div>
@@ -278,7 +325,7 @@ export default function BancoPreguntas() {
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-gradient py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 <Plus size={16} />
-                {loading ? 'Guardando...' : 'Agregar pregunta'}
+                {loading ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Agregar pregunta'}
               </button>
             </form>
           </section>
@@ -310,7 +357,29 @@ export default function BancoPreguntas() {
                           className="mt-2 max-h-24 rounded border border-white/10"
                         />
                       )}
-                      <p className="mt-1 text-xs capitalize text-gray-500">{pregunta.materia}</p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-xs capitalize text-gray-500">{pregunta.materia}</p>
+                        {pregunta.estado === 'validada' ? (
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <Lock size={12} /> Bloqueada (ya validada)
+                          </span>
+                        ) : (
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => iniciarEdicion(pregunta)}
+                              className="flex items-center gap-1 text-xs text-gray-400 transition hover:text-magenta-300"
+                            >
+                              <Pencil size={12} /> Editar
+                            </button>
+                            <button
+                              onClick={() => eliminarPregunta(pregunta._id)}
+                              className="flex items-center gap-1 text-xs text-gray-400 transition hover:text-red-400"
+                            >
+                              <Trash2 size={12} /> Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </li>
                   );
                 })}

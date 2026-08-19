@@ -36,6 +36,6 @@ export const rutaSegunRol = (rol) => {
     case 'administrador':
       return '/admin';
     default:
-      return '/applicant/exam';
+      return '/postulante';
   }
 };

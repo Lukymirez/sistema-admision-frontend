@@ -3,9 +3,11 @@ import Home from './pages/public/Home';
 import Register from './pages/public/Register';
 import Login from './pages/public/Login';
 import VerifyEmail from './pages/public/VerifyEmail';
-import ExamRoom from './pages/applicant/ExamRoom';
 import BancoPreguntas from './pages/docente/BancoPreguntas';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import PostulanteDashboard from './pages/postulante/PostulanteDashboard';
+import Simulacro from './pages/postulante/Simulacro';
+import Resultados from './pages/postulante/Resultados';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -21,7 +23,30 @@ function App() {
         <Route path="/verificar-correo/:token" element={<VerifyEmail />} />
 
         {/* Vista protegida — Postulante */}
-        <Route path="/applicant/exam" element={<ExamRoom />} />
+        <Route
+          path="/postulante"
+          element={
+            <ProtectedRoute roles={['postulante']}>
+              <PostulanteDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/postulante/simulacro"
+          element={
+            <ProtectedRoute roles={['postulante']}>
+              <Simulacro />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/postulante/resultados"
+          element={
+            <ProtectedRoute roles={['postulante']}>
+              <Resultados />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Vista protegida — Docente/Comité: banco de preguntas */}
         <Route
