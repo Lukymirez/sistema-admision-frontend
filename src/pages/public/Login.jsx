@@ -1,159 +1,99 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, GraduationCap } from 'lucide-react';
+
 import api from '../../services/api';
-import { LogIn, UserPlus, Mail, Lock, User, FileText } from 'lucide-react';
+import { rutaSegunRol } from '../../utils/auth';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [isRightPanelActive, setIsRightPanelActive] = useState(false);
-
-  // Estados para Login
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
-  // Estados para Register
-  const [registerData, setRegisterData] = useState({ nombre: '', apellido: '', email: '', password: '', dni: '' });
-  
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLoginSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const response = await api.post('/postulantes/login', loginData);
+      const response = await api.post('/auth/login', form);
       localStorage.setItem('token', response.data.token);
-      alert('¡Inicio de sesión exitoso!');
-      navigate('/applicant/exam');
+      localStorage.setItem('usuario', JSON.stringify(response.data.usuario));
+      navigate(rutaSegunRol(response.data.usuario.rol));
     } catch (err) {
-      setError(err.response?.data?.message || 'Credenciales inválidas.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await api.post('/postulantes/register', registerData);
-      alert('¡Registro exitoso! Ahora puedes iniciar sesión.');
-      setIsRightPanelActive(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error al registrarse.');
+      setError(err.response?.data?.mensaje || 'Correo o contraseña incorrectos.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#08060d] flex items-center justify-center p-4 font-sans text-white">
-      {/* Contenedor principal con efecto Neón */}
-      <div className={`relative w-[750px] h-[470px] bg-transparent rounded-2xl overflow-hidden shadow-[0_0_25px_#742f6c] border border-[#742f6c] flex items-center`}>
-        
-        {/* Formulario de Login */}
-        <div className={`absolute left-0 w-1/2 h-full p-8 flex flex-col justify-center transition-all duration-700 ${isRightPanelActive ? 'translate-x-full opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
-            <h2 className="text-3xl font-bold mb-4">Login</h2>
-            {error && <p className="text-red-400 text-xs bg-red-500/10 p-2 rounded">{error}</p>}
-            
-            <div className="relative border-b border-white pb-1 flex items-center">
-              <input
-                type="email"
-                required
-                placeholder="Username / Email"
-                value={loginData.email}
-                onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                className="w-full bg-transparent outline-none text-sm placeholder-gray-400 pr-8"
-              />
-              <Mail size={16} className="text-gray-400 absolute right-0" />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-ink-950 px-4 font-sans text-white">
+      <div className="w-full max-w-md">
+        <Link to="/" className="mb-8 flex items-center justify-center gap-2 font-display text-lg font-semibold">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-gradient">
+            <GraduationCap size={20} />
+          </span>
+          Admisión 2026
+        </Link>
 
-            <div className="relative border-b border-white pb-1 flex items-center">
-              <input
-                type="password"
-                required
-                placeholder="Password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                className="w-full bg-transparent outline-none text-sm placeholder-gray-400 pr-8"
-              />
-              <Lock size={16} className="text-gray-400 absolute right-0" />
-            </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 shadow-2xl shadow-black/40">
+          <h1 className="font-display text-2xl font-bold text-white">Iniciar sesión</h1>
+          <p className="mt-1 text-sm text-gray-400">Ingresa con tu correo y contraseña.</p>
 
-            <button type="submit" disabled={loading} className="w-full py-2.5 mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full font-semibold shadow-lg hover:opacity-90 transition">
-              {loading ? 'Cargando...' : 'Login'}
+          {error && (
+            <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-gray-300">Correo electrónico</span>
+              <div className="relative">
+                <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="tucorreo@ejemplo.com"
+                  className="w-full rounded-lg border border-white/10 bg-ink-900 py-2.5 pl-10 pr-3 text-sm text-white placeholder-gray-500 outline-none transition focus:border-magenta-400"
+                />
+              </div>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-gray-300">Contraseña</span>
+              <div className="relative">
+                <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="password"
+                  required
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-white/10 bg-ink-900 py-2.5 pl-10 pr-3 text-sm text-white placeholder-gray-500 outline-none transition focus:border-magenta-400"
+                />
+              </div>
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-full bg-brand-gradient py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {loading ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
-
-            <p className="text-center text-xs text-gray-400 mt-4">
-              Don't have an account?{' '}
-              <button type="button" onClick={() => setIsRightPanelActive(true)} className="text-purple-400 font-bold hover:underline">
-                Sign Up
-              </button>
-            </p>
           </form>
+
+          <p className="mt-6 text-center text-sm text-gray-400">
+            ¿No tienes cuenta?{' '}
+            <Link to="/register" className="font-medium text-magenta-300 hover:underline">
+              Regístrate aquí
+            </Link>
+          </p>
         </div>
-
-        {/* Formulario de Registro (Sign Up) */}
-        <div className={`absolute left-0 w-1/2 h-full p-8 flex flex-col justify-center transition-all duration-700 ${!isRightPanelActive ? '-translate-x-full opacity-0 pointer-events-none' : 'opacity-100 translate-x-0'}`}>
-          <form onSubmit={handleRegisterSubmit} className="space-y-3">
-            <h2 className="text-2xl font-bold mb-2">Sign Up</h2>
-            
-            <div className="relative border-b border-white pb-1 flex items-center">
-              <input
-                type="text"
-                required
-                placeholder="Nombre"
-                value={registerData.nombre}
-                onChange={(e) => setRegisterData({...registerData, nombre: e.target.value})}
-                className="w-full bg-transparent outline-none text-xs placeholder-gray-400 pr-6"
-              />
-              <User size={14} className="text-gray-400 absolute right-0" />
-            </div>
-
-            <div className="relative border-b border-white pb-1 flex items-center">
-              <input
-                type="email"
-                required
-                placeholder="Email"
-                value={registerData.email}
-                onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
-                className="w-full bg-transparent outline-none text-xs placeholder-gray-400 pr-6"
-              />
-              <Mail size={14} className="text-gray-400 absolute right-0" />
-            </div>
-
-            <div className="relative border-b border-white pb-1 flex items-center">
-              <input
-                type="password"
-                required
-                placeholder="Password"
-                value={registerData.password}
-                onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
-                className="w-full bg-transparent outline-none text-xs placeholder-gray-400 pr-6"
-              />
-              <Lock size={14} className="text-gray-400 absolute right-0" />
-            </div>
-
-            <button type="submit" disabled={loading} className="w-full py-2 mt-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full font-semibold text-sm shadow-lg hover:opacity-90 transition">
-              {loading ? 'Registrando...' : 'Sign Up'}
-            </button>
-
-            <p className="text-center text-xs text-gray-400 mt-2">
-              Already have an account?{' '}
-              <button type="button" onClick={() => setIsRightPanelActive(false)} className="text-purple-400 font-bold hover:underline">
-                Login
-              </button>
-            </p>
-          </form>
-        </div>
-
-        {/* Panel Deslizante con Degradado Diagonal */}
-        <div className={`absolute top-0 right-0 w-1/2 h-full bg-gradient-to-tr from-[#511378] to-[#250345] rounded-l-[150px] transition-transform duration-700 flex flex-col items-center justify-center text-center p-8 z-10 ${isRightPanelActive ? '-translate-x-full rounded-l-none rounded-r-[150px]' : ''}`}>
-          <h2 className="text-3xl font-extrabold mb-2">WELCOME BACK!</h2>
-          <p className="text-xs text-gray-200">Lorem ipsum, dolor sit amet consectetur adipisicing.</p>
-        </div>
-
       </div>
     </div>
   );
