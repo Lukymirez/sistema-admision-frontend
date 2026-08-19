@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut, Plus, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { GraduationCap, LogOut, Plus, CheckCircle2, Clock, XCircle, ImagePlus, X } from 'lucide-react';
 
 import api from '../../services/api';
 import { getUsuario, cerrarSesion } from '../../utils/auth';
@@ -19,7 +19,7 @@ const MATERIAS = [
 // finalmente acuerde el Comité (ej. 20 preguntas por materia por docente).
 const META_POR_MATERIA = 20;
 
-const PREGUNTA_VACIA = { materia: 'matematica', enunciado: '', alternativas: ['', '', '', ''], respuestaCorrecta: 0 };
+const PREGUNTA_VACIA = { materia: 'matematica', enunciado: '', alternativas: ['', '', '', ''], respuestaCorrecta: 0, imagenUrl: '' };
 
 const ESTADO_BADGE = {
   borrador: { icono: Clock, texto: 'En revisión', clase: 'bg-amber-500/15 text-amber-300' },
@@ -37,6 +37,7 @@ export default function BancoPreguntas() {
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
   const [loading, setLoading] = useState(false);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
   const [cargandoLista, setCargandoLista] = useState(true);
 
   const cargarMisPreguntas = () => {
@@ -65,6 +66,33 @@ export default function BancoPreguntas() {
     nuevas[index] = valor;
     setForm({ ...form, alternativas: nuevas });
   };
+
+  const handleSeleccionarImagen = async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+
+    setError('');
+    setSubiendoImagen(true);
+    try {
+      const datosFormulario = new FormData();
+      datosFormulario.append('imagen', archivo);
+      const res = await api.post('/uploads/imagen', datosFormulario, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm((prev) => ({ ...prev, imagenUrl: res.data.url }));
+    } catch (err) {
+      setError(err.response?.data?.mensaje || 'No se pudo subir la imagen.');
+    } finally {
+      setSubiendoImagen(false);
+    }
+  };
+
+  const quitarImagen = () => setForm((prev) => ({ ...prev, imagenUrl: '' }));
+
+  // La URL de la imagen la sirve el backend (ej: /uploads/preguntas/xxx.png);
+  // hay que anteponerle el host del backend para poder previsualizarla aquí.
+  const urlBackend = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  const urlCompletaImagen = form.imagenUrl ? `${urlBackend}${form.imagenUrl}` : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -185,6 +213,41 @@ export default function BancoPreguntas() {
 
               <div>
                 <span className="mb-1.5 block text-sm font-medium text-gray-300">
+                  Imagen de apoyo (opcional — para diagramas, gráficos o fórmulas)
+                </span>
+                {urlCompletaImagen ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={urlCompletaImagen}
+                      alt="Vista previa de la imagen de la pregunta"
+                      className="max-h-40 rounded-lg border border-white/10"
+                    />
+                    <button
+                      type="button"
+                      onClick={quitarImagen}
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-lg"
+                      aria-label="Quitar imagen"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 bg-ink-900 py-4 text-sm text-gray-400 transition hover:border-magenta-400 hover:text-gray-200">
+                    <ImagePlus size={18} />
+                    {subiendoImagen ? 'Subiendo...' : 'Haz clic para subir una imagen (PNG, JPG, WEBP · máx. 5MB)'}
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleSeleccionarImagen}
+                      disabled={subiendoImagen}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-gray-300">
                   Alternativas (marca el círculo de la respuesta correcta)
                 </span>
                 <div className="space-y-2">
@@ -240,6 +303,13 @@ export default function BancoPreguntas() {
                           <Icono size={12} /> {badge.texto}
                         </span>
                       </div>
+                      {pregunta.imagenUrl && (
+                        <img
+                          src={`${(api.defaults.baseURL || '').replace(/\/api\/?$/, '')}${pregunta.imagenUrl}`}
+                          alt=""
+                          className="mt-2 max-h-24 rounded border border-white/10"
+                        />
+                      )}
                       <p className="mt-1 text-xs capitalize text-gray-500">{pregunta.materia}</p>
                     </li>
                   );

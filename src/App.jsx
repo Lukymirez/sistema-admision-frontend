@@ -5,6 +5,7 @@ import Login from './pages/public/Login';
 import VerifyEmail from './pages/public/VerifyEmail';
 import ExamRoom from './pages/applicant/ExamRoom';
 import BancoPreguntas from './pages/docente/BancoPreguntas';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -19,7 +20,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/verificar-correo/:token" element={<VerifyEmail />} />
 
-        {/* Vista protegida / del postulante */}
+        {/* Vista protegida — Postulante */}
         <Route path="/applicant/exam" element={<ExamRoom />} />
 
         {/* Vista protegida — Docente/Comité: banco de preguntas */}
@@ -28,6 +29,16 @@ function App() {
           element={
             <ProtectedRoute roles={['docente', 'comite']}>
               <BancoPreguntas />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Vista protegida — Administrador: panel administrativo */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute roles={['administrador']}>
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />

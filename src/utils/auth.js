@@ -34,7 +34,7 @@ export const rutaSegunRol = (rol) => {
     case 'comite':
       return '/docente/preguntas';
     case 'administrador':
-      return '/'; // panel administrativo pendiente de construir
+      return '/admin';
     default:
       return '/applicant/exam';
   }
