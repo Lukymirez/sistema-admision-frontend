@@ -1,32 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  GraduationCap,
-  LogOut,
-  Users,
-  FileStack,
-  CopyX,
-  KeyRound,
-  Loader2,
-  AlertTriangle,
-  Lock,
-  CheckCircle2,
-  XCircle,
-  ListChecks,
-  Wallet,
-  BadgeCheck,
-} from 'lucide-react';
+import { GraduationCap, LogOut, Users, FileStack, CopyX, KeyRound, CheckCircle2, XCircle, ListChecks, Wallet, BadgeCheck, UserCog } from 'lucide-react';
 
 import api from '../../services/api';
 import { getUsuario, cerrarSesion } from '../../utils/auth';
-
-const MATERIAS = ['matematica', 'razonamiento', 'comunicacion', 'historia', 'cultura', 'geografia', 'ciencias'];
+import { EstadoBadge, EstadoCargando, EstadoError } from '../../components/gestion-academica/shared';
+import TabPreguntas from '../../components/gestion-academica/TabPreguntas';
+import TabDocentes from '../../components/gestion-academica/TabDocentes';
+import TabDuplicados from '../../components/gestion-academica/TabDuplicados';
+import TabCartilla from '../../components/gestion-academica/TabCartilla';
+import TabPostulantesCompleto from '../../components/gestion-postulantes/TabPostulantesCompleto';
 
 const TABS = [
   { id: 'postulantes', label: 'Postulantes', icono: Users },
   { id: 'pagos', label: 'Pagos', icono: KeyRound },
   { id: 'preguntas', label: 'Preguntas', icono: ListChecks },
   { id: 'docentes', label: 'Docentes', icono: FileStack },
+  { id: 'roles', label: 'Roles', icono: UserCog },
   { id: 'duplicados', label: 'Duplicados', icono: CopyX },
   { id: 'cartilla', label: 'Cartilla de respuestas', icono: KeyRound },
 ];
@@ -85,10 +75,11 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10">
-        {tabActivo === 'postulantes' && <TabPostulantes />}
+        {tabActivo === 'postulantes' && <TabPostulantesCompleto />}
         {tabActivo === 'pagos' && <TabPagos />}
         {tabActivo === 'preguntas' && <TabPreguntas />}
         {tabActivo === 'docentes' && <TabDocentes />}
+        {tabActivo === 'roles' && <TabGestionRoles />}
         {tabActivo === 'duplicados' && <TabDuplicados />}
         {tabActivo === 'cartilla' && <TabCartilla />}
       </main>
@@ -97,72 +88,91 @@ export default function AdminDashboard() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Postulantes: flujo por carrera y turno                                  */
+/* Gestión de roles: agregar/quitar docentes del Comité                    */
 /* ---------------------------------------------------------------------- */
-function TabPostulantes() {
-  const [postulantes, setPostulantes] = useState([]);
+function TabGestionRoles() {
+  const [docentes, setDocentes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [procesandoId, setProcesandoId] = useState(null);
+
+  const cargar = () => {
+    setCargando(true);
+    api
+      .get('/auth/docentes')
+      .then((res) => setDocentes(res.data?.docentes || []))
+      .catch((err) => setError(err.response?.data?.mensaje || 'No se pudo cargar la lista.'))
+      .finally(() => setCargando(false));
+  };
 
   useEffect(() => {
-    api
-      .get('/auth/postulantes')
-      .then((res) => setPostulantes(res.data?.postulantes || []))
-      .catch((err) => setError(err.response?.data?.mensaje || 'No se pudo cargar la lista de postulantes.'))
-      .finally(() => setCargando(false));
+    cargar();
   }, []);
 
-  const porCarrera = postulantes.reduce((acc, p) => {
-    const nombreCarrera = p.carreraId?.nombre || 'Sin carrera';
-    acc[nombreCarrera] = (acc[nombreCarrera] || 0) + 1;
-    return acc;
-  }, {});
-
-  const porTurno = postulantes.reduce((acc, p) => {
-    const turno = p.turno || 'Sin turno';
-    acc[turno] = (acc[turno] || 0) + 1;
-    return acc;
-  }, {});
+  const cambiarRol = async (id, nuevoRol) => {
+    setProcesandoId(id);
+    try {
+      await api.put(`/auth/docentes/${id}/rol`, { rol: nuevoRol });
+      cargar();
+    } catch (err) {
+      setError(err.response?.data?.mensaje || 'No se pudo cambiar el rol.');
+    } finally {
+      setProcesandoId(null);
+    }
+  };
 
   if (cargando) return <EstadoCargando />;
   if (error) return <EstadoError mensaje={error} />;
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-6 md:grid-cols-2">
-        <ResumenTarjeta titulo="Postulantes por carrera" datos={porCarrera} />
-        <ResumenTarjeta titulo="Postulantes por turno" datos={porTurno} capitalizar />
-      </div>
-
+    <div>
+      <p className="mb-4 text-sm text-gray-400">
+        Agrega un docente al Comité para que pueda validar preguntas, generar el examen y ver la
+        cartilla de respuestas — o regrésalo a docente normal si ya no corresponde.
+      </p>
       <div className="overflow-x-auto rounded-2xl border border-white/10">
         <table className="w-full text-left text-sm">
           <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">DNI</th>
-              <th className="px-4 py-3">Carrera</th>
-              <th className="px-4 py-3">Turno</th>
-              <th className="px-4 py-3">Modalidad</th>
-              <th className="px-4 py-3">Estado</th>
+              <th className="px-4 py-3">Correo</th>
+              <th className="px-4 py-3">Rol actual</th>
+              <th className="px-4 py-3">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {postulantes.length === 0 ? (
+            {docentes.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Todavía no hay postulantes registrados.
-                </td>
+                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">No hay docentes registrados.</td>
               </tr>
             ) : (
-              postulantes.map((p) => (
-                <tr key={p._id}>
-                  <td className="px-4 py-3">{p.nombres} {p.apellidos}</td>
-                  <td className="px-4 py-3 text-gray-400">{p.dni}</td>
-                  <td className="px-4 py-3">{p.carreraId?.nombre || '—'}</td>
-                  <td className="px-4 py-3 capitalize">{p.turno || '—'}</td>
-                  <td className="px-4 py-3 capitalize">{p.modalidadIngreso || '—'}</td>
+              docentes.map((d) => (
+                <tr key={d._id}>
+                  <td className="px-4 py-3">{d.nombres} {d.apellidos}</td>
+                  <td className="px-4 py-3 text-gray-400">{d.email}</td>
                   <td className="px-4 py-3">
-                    <EstadoBadge activo={p.estado === 'activo'} texto={p.estado} />
+                    <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${d.rol === 'comite' ? 'bg-magenta-600/15 text-magenta-300' : 'bg-white/10 text-gray-300'}`}>
+                      {d.rol}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {d.rol === 'docente' ? (
+                      <button
+                        onClick={() => cambiarRol(d._id, 'comite')}
+                        disabled={procesandoId === d._id}
+                        className="rounded-full bg-brand-gradient px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                      >
+                        Agregar al Comité
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => cambiarRol(d._id, 'docente')}
+                        disabled={procesandoId === d._id}
+                        className="rounded-full border border-white/15 px-4 py-1.5 text-xs text-gray-300 transition hover:bg-white/5 disabled:opacity-50"
+                      >
+                        Quitar del Comité
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -176,6 +186,7 @@ function TabPostulantes() {
 
 /* ---------------------------------------------------------------------- */
 /* Pagos: aprobar/rechazar vouchers — habilita la postulación (HU-02/17)   */
+/* Exclusivo del Administrador — Tesorería solo "verifica" en su panel.    */
 /* ---------------------------------------------------------------------- */
 function TabPagos() {
   const [postulantes, setPostulantes] = useState([]);
@@ -219,6 +230,22 @@ function TabPagos() {
 
   const urlBackend = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
 
+  const descargarReportePago = async (postulanteId, nombreArchivo) => {
+    try {
+      const res = await api.get(`/auth/postulantes/${postulanteId}/reporte-pago`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nombreArchivo;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('No se pudo descargar el PDF del pago.');
+    }
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -260,6 +287,12 @@ function TabPagos() {
                     Postulación no habilitada
                   </span>
                 )}
+                <button
+                  onClick={() => descargarReportePago(p._id, `pago_${p.dni}.pdf`)}
+                  className="ml-2 rounded-full border border-white/15 px-3 py-1 text-xs text-gray-300 transition hover:bg-white/5"
+                >
+                  Descargar PDF
+                </button>
               </div>
 
               <div className="mt-4 space-y-3">
@@ -320,456 +353,6 @@ function TabPagos() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Preguntas: ver TODAS las preguntas del banco y validarlas una por una   */
-/* ---------------------------------------------------------------------- */
-function TabPreguntas() {
-  const [preguntas, setPreguntas] = useState([]);
-  const [filtroEstado, setFiltroEstado] = useState('borrador');
-  const [filtroMateria, setFiltroMateria] = useState('');
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState('');
-  const [procesandoId, setProcesandoId] = useState(null);
-
-  const cargar = () => {
-    setCargando(true);
-    setError('');
-    const params = {};
-    if (filtroEstado) params.estado = filtroEstado;
-    if (filtroMateria) params.materia = filtroMateria;
-    api
-      .get('/preguntas', { params })
-      .then((res) => setPreguntas(res.data?.preguntas || []))
-      .catch((err) => setError(err.response?.data?.mensaje || 'No se pudieron cargar las preguntas.'))
-      .finally(() => setCargando(false));
-  };
-
-  useEffect(() => {
-    cargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroEstado, filtroMateria]);
-
-  const cambiarEstado = async (id, nuevoEstado) => {
-    setProcesandoId(id);
-    try {
-      await api.put(`/preguntas/${id}/validar`, { estado: nuevoEstado });
-      cargar();
-    } catch (err) {
-      setError(err.response?.data?.mensaje || 'No se pudo actualizar la pregunta.');
-    } finally {
-      setProcesandoId(null);
-    }
-  };
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-gray-300">Estado</span>
-          <select
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-magenta-400"
-          >
-            <option value="borrador">Pendientes de revisión</option>
-            <option value="validada">Validadas</option>
-            <option value="rechazada">Rechazadas</option>
-            <option value="">Todas</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-gray-300">Materia</span>
-          <select
-            value={filtroMateria}
-            onChange={(e) => setFiltroMateria(e.target.value)}
-            className="rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-magenta-400"
-          >
-            <option value="">Todas las materias</option>
-            {MATERIAS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {error && <EstadoError mensaje={error} />}
-      {cargando ? (
-        <EstadoCargando />
-      ) : preguntas.length === 0 ? (
-        <p className="text-sm text-gray-500">No hay preguntas con este filtro.</p>
-      ) : (
-        <div className="space-y-4">
-          {preguntas.map((pregunta) => (
-            <div key={pregunta._id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <span className="rounded-full bg-magenta-600/15 px-2.5 py-1 text-xs font-medium capitalize text-magenta-300">
-                    {pregunta.materia}
-                  </span>
-                  <p className="mt-2 text-sm text-gray-200">{pregunta.enunciado}</p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Por {pregunta.autorId?.nombres} {pregunta.autorId?.apellidos} ({pregunta.autorId?.email})
-                  </p>
-                </div>
-                <EstadoBadge activo={pregunta.estado === 'validada'} texto={pregunta.estado} />
-              </div>
-
-              {pregunta.imagenUrl && (
-                <img
-                  src={`${(api.defaults.baseURL || '').replace(/\/api\/?$/, '')}${pregunta.imagenUrl}`}
-                  alt=""
-                  className="mt-3 max-h-40 rounded border border-white/10"
-                />
-              )}
-
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                {pregunta.alternativas.map((alt, index) => (
-                  <li
-                    key={index}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                      index === pregunta.respuestaCorrecta
-                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                        : 'border-white/10 text-gray-400'
-                    }`}
-                  >
-                    <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {alt}
-                    {index === pregunta.respuestaCorrecta && <CheckCircle2 size={14} className="ml-auto shrink-0" />}
-                  </li>
-                ))}
-              </ul>
-
-              {pregunta.estado !== 'validada' && (
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => cambiarEstado(pregunta._id, 'validada')}
-                    disabled={procesandoId === pregunta._id}
-                    className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-4 py-1.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/25 disabled:opacity-50"
-                  >
-                    <CheckCircle2 size={14} /> Validar
-                  </button>
-                  <button
-                    onClick={() => cambiarEstado(pregunta._id, 'rechazada')}
-                    disabled={procesandoId === pregunta._id}
-                    className="flex items-center gap-1.5 rounded-full bg-red-500/15 px-4 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/25 disabled:opacity-50"
-                  >
-                    <XCircle size={14} /> Rechazar
-                  </button>
-                </div>
-              )}
-              {pregunta.estado === 'validada' && (
-                <p className="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
-                  <Lock size={12} /> Ya validada — entra al sorteo de simulacros y del examen.
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Docentes: progreso de subida por materia                                */
-/* ---------------------------------------------------------------------- */
-function TabDocentes() {
-  const [progreso, setProgreso] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    api
-      .get('/preguntas/progreso-docentes')
-      .then((res) => setProgreso(res.data?.progreso || []))
-      .catch((err) => setError(err.response?.data?.mensaje || 'No se pudo cargar el progreso de los docentes.'))
-      .finally(() => setCargando(false));
-  }, []);
-
-  if (cargando) return <EstadoCargando />;
-  if (error) return <EstadoError mensaje={error} />;
-
-  if (progreso.length === 0) {
-    return <p className="text-sm text-gray-500">Todavía ningún docente ha subido preguntas.</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {progreso.map((docente) => (
-        <div key={docente.autorId} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-display font-semibold text-white">
-                {docente.nombres} {docente.apellidos}
-              </p>
-              <p className="text-xs capitalize text-gray-500">{docente.email} · {docente.rol}</p>
-            </div>
-            <span className="rounded-full bg-magenta-600/15 px-3 py-1 text-xs font-medium text-magenta-300">
-              {docente.total} preguntas subidas
-            </span>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {docente.detalle.map((d, i) => (
-              <span
-                key={i}
-                className={`rounded-full px-2.5 py-1 text-xs capitalize ${
-                  d.estado === 'validada'
-                    ? 'bg-emerald-500/15 text-emerald-300'
-                    : d.estado === 'rechazada'
-                      ? 'bg-red-500/15 text-red-300'
-                      : 'bg-amber-500/15 text-amber-300'
-                }`}
-              >
-                {d.materia}: {d.cantidad} ({d.estado})
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Duplicados: posibles preguntas repetidas entre docentes distintos       */
-/* ---------------------------------------------------------------------- */
-function TabDuplicados() {
-  const [materia, setMateria] = useState('');
-  const [duplicados, setDuplicados] = useState([]);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState('');
-  const [buscado, setBuscado] = useState(false);
-
-  const buscar = () => {
-    setCargando(true);
-    setError('');
-    setBuscado(true);
-    api
-      .get('/preguntas/duplicados', { params: materia ? { materia } : {} })
-      .then((res) => setDuplicados(res.data?.posiblesDuplicados || []))
-      .catch((err) => setError(err.response?.data?.mensaje || 'No se pudo ejecutar la búsqueda de duplicados.'))
-      .finally(() => setCargando(false));
-  };
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-gray-300">Materia (opcional, recomendado)</span>
-          <select
-            value={materia}
-            onChange={(e) => setMateria(e.target.value)}
-            className="rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-magenta-400"
-          >
-            <option value="">Todas las materias</option>
-            {MATERIAS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          onClick={buscar}
-          disabled={cargando}
-          className="rounded-full bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {cargando ? 'Buscando…' : 'Buscar posibles duplicados'}
-        </button>
-      </div>
-
-      {error && <EstadoError mensaje={error} />}
-
-      {!cargando && buscado && duplicados.length === 0 && !error && (
-        <p className="text-sm text-emerald-300">No se encontraron preguntas similares entre distintos docentes. ✅</p>
-      )}
-
-      <div className="space-y-4">
-        {duplicados.map((par, i) => (
-          <div key={i} className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-amber-300">
-              <AlertTriangle size={16} /> {par.similitud}% de similitud
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-gray-500">{par.preguntaA.autor?.nombres} {par.preguntaA.autor?.apellidos}</p>
-                <p className="mt-1 text-sm text-gray-200">{par.preguntaA.enunciado}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">{par.preguntaB.autor?.nombres} {par.preguntaB.autor?.apellidos}</p>
-                <p className="mt-1 text-sm text-gray-200">{par.preguntaB.enunciado}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Cartilla de respuestas: restringida hasta después del examen            */
-/* ---------------------------------------------------------------------- */
-function TabCartilla() {
-  const [convocatorias, setConvocatorias] = useState([]);
-  const [convocatoriaId, setConvocatoriaId] = useState('');
-  const [preguntas, setPreguntas] = useState(null);
-  const [error, setError] = useState('');
-  const [cargando, setCargando] = useState(false);
-
-  useEffect(() => {
-    api
-      .get('/convocatorias')
-      .then((res) => {
-        const lista = res.data?.convocatorias || [];
-        setConvocatorias(lista);
-        if (lista[0]) setConvocatoriaId(lista[0]._id);
-      })
-      .catch(() => setConvocatorias([]));
-  }, []);
-
-  const consultar = () => {
-    if (!convocatoriaId) return;
-    setCargando(true);
-    setError('');
-    setPreguntas(null);
-    api
-      .get(`/preguntas/cartilla/${convocatoriaId}`)
-      .then((res) => setPreguntas(res.data?.preguntas || []))
-      .catch((err) => setError(err.response?.data?.mensaje || 'No se pudo obtener la cartilla.'))
-      .finally(() => setCargando(false));
-  };
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-gray-300">Convocatoria</span>
-          <select
-            value={convocatoriaId}
-            onChange={(e) => setConvocatoriaId(e.target.value)}
-            className="min-w-[240px] rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white outline-none focus:border-magenta-400"
-          >
-            {convocatorias.length === 0 && <option value="">No hay convocatorias cargadas</option>}
-            {convocatorias.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          onClick={consultar}
-          disabled={cargando || !convocatoriaId}
-          className="rounded-full bg-brand-gradient px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {cargando ? 'Consultando…' : 'Ver cartilla de respuestas'}
-        </button>
-      </div>
-
-      {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-300">
-          <Lock size={18} className="mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {preguntas && (
-        <div className="overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-gray-400">
-              <tr>
-                <th className="px-4 py-3">Materia</th>
-                <th className="px-4 py-3">Pregunta</th>
-                <th className="px-4 py-3">Respuesta correcta</th>
-                <th className="px-4 py-3">Autor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {preguntas.map((p) => (
-                <tr key={p._id}>
-                  <td className="px-4 py-3 capitalize">{p.materia}</td>
-                  <td className="px-4 py-3">{p.enunciado}</td>
-                  <td className="px-4 py-3 font-medium text-emerald-300">
-                    {p.alternativas[p.respuestaCorrecta]}
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {p.autorId?.nombres} {p.autorId?.apellidos}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Helpers visuales compartidos                                           */
-/* ---------------------------------------------------------------------- */
-function ResumenTarjeta({ titulo, datos, capitalizar }) {
-  const entradas = Object.entries(datos);
-  const total = entradas.reduce((sum, [, cantidad]) => sum + cantidad, 0);
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <h3 className="font-display text-sm font-semibold text-white">{titulo}</h3>
-      <div className="mt-4 space-y-3">
-        {entradas.length === 0 ? (
-          <p className="text-sm text-gray-500">Sin datos todavía.</p>
-        ) : (
-          entradas.map(([etiqueta, cantidad]) => (
-            <div key={etiqueta}>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span className={capitalizar ? 'capitalize' : ''}>{etiqueta}</span>
-                <span>{cantidad}</span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full bg-brand-gradient"
-                  style={{ width: `${total === 0 ? 0 : Math.round((cantidad / total) * 100)}%` }}
-                />
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function EstadoBadge({ activo, texto }) {
-  return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-xs capitalize ${
-        activo ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
-      }`}
-    >
-      {texto}
-    </span>
-  );
-}
-
-function EstadoCargando() {
-  return (
-    <div className="flex items-center gap-2 text-sm text-gray-500">
-      <Loader2 size={16} className="animate-spin" /> Cargando…
-    </div>
-  );
-}
-
-function EstadoError({ mensaje }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-      <AlertTriangle size={18} className="mt-0.5 shrink-0" />
-      <span>{mensaje}</span>
     </div>
   );
 }

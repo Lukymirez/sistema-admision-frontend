@@ -6,6 +6,8 @@ import VerifyEmail from './pages/public/VerifyEmail';
 import BancoPreguntas from './pages/docente/BancoPreguntas';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import TesoreriaDashboard from './pages/tesoreria/TesoreriaDashboard';
+import ComiteDashboard from './pages/comite/ComiteDashboard';
+import SecretariaDashboard from './pages/secretaria/SecretariaDashboard';
 import PostulanteDashboard from './pages/postulante/PostulanteDashboard';
 import Simulacro from './pages/postulante/Simulacro';
 import Resultados from './pages/postulante/Resultados';
@@ -93,6 +95,26 @@ function App() {
           element={
             <ProtectedRoute roles={['tesoreria']}>
               <TesoreriaDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Vista protegida — Comité: validar preguntas, generar examen, cartilla */}
+        <Route
+          path="/comite"
+          element={
+            <ProtectedRoute roles={['comite']}>
+              <ComiteDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Vista protegida — Secretaría Académica: seguimiento de postulantes */}
+        <Route
+          path="/secretaria"
+          element={
+            <ProtectedRoute roles={['secretaria']}>
+              <SecretariaDashboard />
             </ProtectedRoute>
           }
         />

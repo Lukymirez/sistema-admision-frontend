@@ -31,12 +31,15 @@ export const cerrarSesion = () => {
 export const rutaSegunRol = (rol) => {
   switch (rol) {
     case 'docente':
-    case 'comite':
       return '/docente/preguntas';
+    case 'comite':
+      return '/comite';
     case 'administrador':
       return '/admin';
     case 'tesoreria':
       return '/tesoreria';
+    case 'secretaria':
+      return '/secretaria';
     default:
       return '/postulante';
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut, Wallet, CheckCircle2, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { GraduationCap, LogOut, Wallet, CheckCircle2, Loader2, AlertTriangle, ShieldCheck, Download } from 'lucide-react';
 
 import api from '../../services/api';
 import { getUsuario, cerrarSesion } from '../../utils/auth';
@@ -47,6 +47,22 @@ export default function TesoreriaDashboard() {
   };
 
   const urlBackend = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+
+  const descargarReportePago = async (postulanteId, nombreArchivo) => {
+    try {
+      const res = await api.get(`/auth/postulantes/${postulanteId}/reporte-pago`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nombreArchivo;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('No se pudo descargar el PDF.');
+    }
+  };
 
   // Aplanamos: un pago por fila, con los datos del postulante al lado.
   const filasPago = postulantes.flatMap((p) =>
@@ -132,19 +148,27 @@ export default function TesoreriaDashboard() {
                     </a>
                   </div>
 
-                  {pago.verificadoTesoreria ? (
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300">
-                      <CheckCircle2 size={14} /> Verificado
-                    </span>
-                  ) : (
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    {pago.verificadoTesoreria ? (
+                      <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300">
+                        <CheckCircle2 size={14} /> Verificado
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => marcarVerificado(postulante._id, indice)}
+                        disabled={procesando === `${postulante._id}-${indice}`}
+                        className="rounded-full bg-brand-gradient px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                      >
+                        {procesando === `${postulante._id}-${indice}` ? 'Guardando...' : 'Marcar como verificado'}
+                      </button>
+                    )}
                     <button
-                      onClick={() => marcarVerificado(postulante._id, indice)}
-                      disabled={procesando === `${postulante._id}-${indice}`}
-                      className="shrink-0 rounded-full bg-brand-gradient px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                      onClick={() => descargarReportePago(postulante._id, `pago_${postulante.dni}.pdf`)}
+                      className="flex items-center gap-1 rounded-full border border-white/15 px-3 py-1.5 text-xs text-gray-300 transition hover:bg-white/5"
                     >
-                      {procesando === `${postulante._id}-${indice}` ? 'Guardando...' : 'Marcar como verificado'}
+                      <Download size={12} /> Descargar PDF
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             ))}
