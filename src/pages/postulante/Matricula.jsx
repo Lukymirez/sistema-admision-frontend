@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut, ArrowLeft, Upload, CheckCircle2, Loader2, FileText, Wallet, Info, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { GraduationCap, LogOut, ArrowLeft, Upload, CheckCircle2, Loader2, FileText, Wallet, Info, Plus, Trash2, AlertTriangle, BadgeCheck, Clock } from 'lucide-react';
 
 import api from '../../services/api';
 import { getUsuario, cerrarSesion } from '../../utils/auth';
@@ -39,7 +39,7 @@ export default function Matricula() {
   const usuario = getUsuario();
 
   const [matricula, setMatricula] = useState({ pagos: [] });
-  const [resumen, setResumen] = useState({ documentosCompletados: 0, documentosTotales: 4, montoTotalPagado: 0, montoRequerido: 150, pagoCompleto: false });
+  const [resumen, setResumen] = useState({ documentosCompletados: 0, documentosTotales: 4, montoTotalPagado: 0, montoRequerido: 150, pagoCompleto: false, postulacionHabilitada: false, codigoPostulante: null });
   const [cargando, setCargando] = useState(true);
   const [subiendoCampo, setSubiendoCampo] = useState(null);
   const [error, setError] = useState('');
@@ -63,6 +63,8 @@ export default function Matricula() {
           montoTotalPagado: res.data?.montoTotalPagado ?? 0,
           montoRequerido: res.data?.montoRequerido ?? 150,
           pagoCompleto: res.data?.pagoCompleto ?? false,
+          postulacionHabilitada: res.data?.postulacionHabilitada ?? false,
+          codigoPostulante: res.data?.codigoPostulante ?? null,
         });
       })
       .catch((err) => setError(err.response?.data?.mensaje || 'No se pudo cargar tu matrícula.'))
@@ -176,6 +178,29 @@ export default function Matricula() {
           Sube estos documentos para dejar lista tu matrícula. Puedes hacerlo de a poco — se guarda
           cada uno apenas lo subes.
         </p>
+
+        {!cargando && (
+          <div
+            className={`mt-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
+              resumen.postulacionHabilitada
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+            }`}
+          >
+            {resumen.postulacionHabilitada ? (
+              <>
+                <BadgeCheck size={18} className="shrink-0" />
+                Postulación habilitada — tu código de postulante es <strong>{resumen.codigoPostulante}</strong>
+              </>
+            ) : (
+              <>
+                <Clock size={18} className="shrink-0" />
+                Tu postulación aún no está habilitada — se activa automáticamente cuando el área
+                administrativa valide tu pago.
+              </>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">{error}</div>

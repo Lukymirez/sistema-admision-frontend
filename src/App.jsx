@@ -5,6 +5,7 @@ import Login from './pages/public/Login';
 import VerifyEmail from './pages/public/VerifyEmail';
 import BancoPreguntas from './pages/docente/BancoPreguntas';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import TesoreriaDashboard from './pages/tesoreria/TesoreriaDashboard';
 import PostulanteDashboard from './pages/postulante/PostulanteDashboard';
 import Simulacro from './pages/postulante/Simulacro';
 import Resultados from './pages/postulante/Resultados';
@@ -82,6 +83,16 @@ function App() {
           element={
             <ProtectedRoute roles={['administrador']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Vista protegida — Tesorería: verificación de pagos */}
+        <Route
+          path="/tesoreria"
+          element={
+            <ProtectedRoute roles={['tesoreria']}>
+              <TesoreriaDashboard />
             </ProtectedRoute>
           }
         />

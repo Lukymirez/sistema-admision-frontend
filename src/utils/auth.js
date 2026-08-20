@@ -35,6 +35,8 @@ export const rutaSegunRol = (rol) => {
       return '/docente/preguntas';
     case 'administrador':
       return '/admin';
+    case 'tesoreria':
+      return '/tesoreria';
     default:
       return '/postulante';
   }
