@@ -26,7 +26,7 @@ const OPCIONES = [
     descripcion: 'Información de la carrera elegida y tu segunda opción, por si no alcanzas la primera.',
     icono: School,
     ruta: '/postulante/carrera',
-    disponible: false,
+    disponible: true,
   },
   {
     id: 'matricula',
@@ -34,7 +34,7 @@ const OPCIONES = [
     descripcion: 'Pagos pendientes, validación de datos escolares y siguientes pasos para matricularte.',
     icono: ClipboardCheck,
     ruta: '/postulante/matricula',
-    disponible: false,
+    disponible: true,
   },
 ];
 

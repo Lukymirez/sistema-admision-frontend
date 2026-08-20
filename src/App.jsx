@@ -8,6 +8,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import PostulanteDashboard from './pages/postulante/PostulanteDashboard';
 import Simulacro from './pages/postulante/Simulacro';
 import Resultados from './pages/postulante/Resultados';
+import MiCarrera from './pages/postulante/MiCarrera';
+import Matricula from './pages/postulante/Matricula';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -44,6 +46,22 @@ function App() {
           element={
             <ProtectedRoute roles={['postulante']}>
               <Resultados />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/postulante/carrera"
+          element={
+            <ProtectedRoute roles={['postulante']}>
+              <MiCarrera />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/postulante/matricula"
+          element={
+            <ProtectedRoute roles={['postulante']}>
+              <Matricula />
             </ProtectedRoute>
           }
         />
