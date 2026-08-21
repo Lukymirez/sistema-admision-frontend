@@ -12,6 +12,8 @@ import {
   School,
   MapPinned,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 import api from '../../services/api';
@@ -314,7 +316,11 @@ export default function Register() {
   );
 }
 
-function Campo({ icono: Icono, label, ...props }) {
+function Campo({ icono: Icono, label, type, ...props }) {
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const esPassword = type === 'password';
+  const tipoReal = esPassword ? (mostrarPassword ? 'text' : 'password') : type;
+
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-gray-300">{label}</span>
@@ -322,11 +328,23 @@ function Campo({ icono: Icono, label, ...props }) {
         {Icono && <Icono size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />}
         <input
           {...props}
+          type={tipoReal}
           required
           className={`w-full rounded-lg border border-white/10 bg-ink-900 py-2.5 text-sm text-white placeholder-gray-500 outline-none transition focus:border-magenta-400 ${
-            Icono ? 'pl-10 pr-3' : 'px-3'
-          }`}
+            Icono ? 'pl-10' : 'pl-3'
+          } ${esPassword ? 'pr-10' : 'pr-3'}`}
         />
+        {esPassword && (
+          <button
+            type="button"
+            onClick={() => setMostrarPassword((prev) => !prev)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition hover:text-gray-300"
+            aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            tabIndex={-1}
+          >
+            {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
       </div>
     </label>
   );
